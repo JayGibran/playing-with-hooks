@@ -1,17 +1,32 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useReducer, useCallback } from "react";
 
 import IngredientForm from "./IngredientForm";
 import IngredientList from "./IngredientList";
 import ErrorModal from "../UI/ErrorModal";
 import Search from "./Search";
 
-function Ingredients() {
-  const [ingredients, setIngredients] = useState([]);
+const ingredientReducer = (currentIngredients, action) => {
+  switch (action.type) {
+    case "SET":
+      return action.ingredients;
+    case "ADD":
+      return [...currentIngredients, action.ingredient];
+    case "DELETE":
+      return currentIngredients.filter(
+        ingredient => ingredient.id !== action.id
+      );
+    default:
+      throw new Error("Should not get there!");
+  }
+};
+
+const Ingredients = () => {
+  const [userIngredients, dispatch] = useReducer(ingredientReducer, []);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState();
 
   const filteredIngredients = useCallback(filteredIngredients => {
-    setIngredients(filteredIngredients);
+    dispatch({ type: "SET", ingredients: filteredIngredients });
   }, []);
 
   const addIngredientHandler = ingredient => {
@@ -26,10 +41,10 @@ function Ingredients() {
         return response.json();
       })
       .then(responseData => {
-        setIngredients(prevIngredients => [
-          ...prevIngredients,
-          { id: responseData.name, ...ingredient }
-        ]);
+        dispatch({
+          type: "ADD",
+          ingredient: { id: responseData.name, ...ingredient }
+        });
       })
       .catch(err => {
         setIsLoading(false);
@@ -51,9 +66,7 @@ function Ingredients() {
         return response.json();
       })
       .then(responseData => {
-        setIngredients(prevIngredients =>
-          prevIngredients.filter(ingredient => ingredient.id !== ingredientId)
-        );
+        dispatch({ type: "DELETE", id: ingredientId });
       })
       .catch(err => {
         setIsLoading(false);
@@ -76,12 +89,12 @@ function Ingredients() {
       <section>
         <Search onLoadIngredients={filteredIngredients} />
         <IngredientList
-          ingredients={ingredients}
+          ingredients={userIngredients}
           onRemoveItem={removeIngredientHandler}
         />
       </section>
     </div>
   );
-}
+};
 
 export default Ingredients;
